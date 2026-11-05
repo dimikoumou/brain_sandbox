@@ -1,0 +1,20 @@
+# Phase 1 control: one unstructured module of the same total size (256 units).
+# Inputs, rule and readout all connect to the single module, as in Yang et al. 2019.
+name: phase1_flat
+seeds: [0, 1, 2, 3, 4]
+model:
+  dale: true
+  dt_ms: 20.0
+  modules:
+    - {name: flat, size: 256, tau_ms: 100, noise: 0.05}
+  pathways: []
+  input_routes: {fixation: [flat], mod1: [flat], mod2: [flat], tono: [flat], rule: [flat]}
+  output_module: flat
+tasks:
+  names: [go, delaygo]
+  n_ring: 16
+train:
+  n_iters: 8000
+  batch_size: 64
+  lr: 0.003
+  stop_at_accuracy: 0.95

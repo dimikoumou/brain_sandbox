@@ -1,0 +1,21 @@
+# Phase 1: four designed regions, Dale's law, Go + Delay-Go.
+# Anything not listed here takes the default from brain_sandbox/config.py,
+# and the run folder's config.yaml records every resolved value.
+name: phase1_modular
+seeds: [0, 1, 2, 3, 4]
+model:
+  dale: true
+  dt_ms: 20.0
+  modules:
+    - {name: sensory,    size: 64, tau_ms: 100, noise: 0.05}
+    - {name: memory,     size: 64, tau_ms: 100, noise: 0.05}
+    - {name: conceptual, size: 64, tau_ms: 100, noise: 0.05}
+    - {name: executive,  size: 64, tau_ms: 100, noise: 0.05}
+tasks:
+  names: [go, delaygo]
+  n_ring: 16
+train:
+  n_iters: 8000
+  batch_size: 64
+  lr: 0.003
+  stop_at_accuracy: 0.95
