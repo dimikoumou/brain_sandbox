@@ -14,7 +14,7 @@ noise), to see which abilities break, which survive, and whether any get better.
 
 | Phase | Content | State |
 |---|---|---|
-| 1 | Model, Go + Delay-Go, training loop, tests | **done** |
+| 1 | Model, Go + Delay-Go, training loop, tests | **done** (results below) |
 | 2 | Full task set, pitch tasks, multi-seed training, the "is absolute pitch discarded?" checkpoint | next |
 | 3 | Perturbation library, lesion matrix, dissociation detection | |
 | 4 | Emergent clusters, latent-pitch probes | |
