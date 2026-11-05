@@ -140,6 +140,52 @@ Every run folder stores the full resolved config, the git commit (and whether
 the working tree had uncommitted changes), library versions and, per seed, the
 weights, a metrics CSV and the learning curve.
 
+## Phase 1 results
+
+Commit `5fce26f`, 5 seeds per model, trained until every task reached ≥95% at
+two evaluations in a row. Scored on 1000 fresh trials per task (stricter rule
+above). 95% CI over seeds.
+
+| Model | Go | Delay-Go | Iterations to criterion (per seed) |
+|---|---|---|---|
+| modular (4 regions) | 0.989 [0.976, 1.002] | 1.000 [1.000, 1.000] | 2900, 3300, 3800, 3700, 3600 |
+| flat (1 block) | 1.000 [1.000, 1.000] | 0.993 [0.988, 0.999] | 3700, 2500, 4600, 4300, 5600 |
+
+About 4–8 minutes per seed on 2 CPU threads. Figures: `docs/phase1/`.
+(A CI upper bound above 1.0 is an artefact of the t-interval on 5 values
+that sit close to 1; read it as "≈1".)
+
+![modular learning curves](docs/phase1/learning_curves_modular.png)
+
+### Phase 1 notes (things found on the way, kept for the record)
+
+* **Learning rate.** With `lr = 1e-3` the modular model had not learned
+  either task after 4000 iterations, while the flat model learned Go within
+  500. Diagnosis: the modular model *did* report the right direction (median
+  error 4°) but its fixation output drifted down during the stimulus. It
+  failed to use the fixation cue, which must travel sensory → memory or
+  conceptual → executive through sparse, excitatory-only pathways.
+  `lr = 3e-3` fixed this on seed 0; `dale: false` did not. The learning rate
+  was chosen for *training success only*, before any perturbation experiment.
+* **Evaluation bug fixed.** Trials in a batch share their timing, so evaluating
+  in batches of 128 meant each task was scored on only 2 different timings.
+  That made accuracy jump between 0 and 1. Evaluation now uses batches of 16.
+* **One instability.** Modular seed 4 had a loss spike (~10³) at iteration
+  ~400 (runaway activity), then recovered thanks to gradient clipping.
+* **Thin fixation margin.** In the trained modular model the fixation output
+  sits around 0.65 during the delay (target 0.85, threshold 0.5). Small
+  perturbations may therefore show up first as "breaks fixation early".
+  Phase 3 will report fixation breaks and wrong directions *separately* so
+  this failure mode does not mask more specific effects.
+* **Delay activity is not confined to `memory`.** `sensory` and `conceptual`
+  units also hold elevated activity through the delay (see
+  `docs/phase1/example_delaygo_modular_seed0.png`). Region names describe
+  wiring, not function.
+* **Reproducibility scope.** Identical seed *and* identical
+  `train.num_threads` give bit-identical results (tested). A different
+  thread count changes floating-point summation order, so the training
+  trajectory differs.
+
 ## Code map
 
 ```
