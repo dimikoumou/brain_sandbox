@@ -131,6 +131,14 @@ def cmd_report(args):
     print((out / "report.md").read_text())
 
 
+def cmd_pitch_compare(args):
+    from .analysis.pitch_checkpoint import compare
+
+    labels = args.labels or [Path(r).name for r in args.runs]
+    out = compare(dict(zip(labels, args.runs)), args.runs_root, n_reps=args.reps)
+    print((out / "report.md").read_text())
+
+
 def main(argv=None):
     p = argparse.ArgumentParser(prog="brain_sandbox")
     sub = p.add_subparsers(dest="cmd", required=True)
@@ -172,6 +180,13 @@ def main(argv=None):
     r = sub.add_parser("report", help="rebuild the report of a finished experiment")
     r.add_argument("--results", required=True)
     r.set_defaults(func=cmd_report)
+
+    c = sub.add_parser("pitch-compare", help="phase-2 checkpoint: hidden absolute pitch across trained models")
+    c.add_argument("--runs", nargs="+", required=True)
+    c.add_argument("--labels", nargs="+")
+    c.add_argument("--reps", type=int, default=24)
+    c.add_argument("--runs-root", default="runs")
+    c.set_defaults(func=cmd_pitch_compare)
 
     args = p.parse_args(argv)
     args.func(args)

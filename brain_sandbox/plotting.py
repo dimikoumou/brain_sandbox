@@ -290,3 +290,46 @@ def plot_sweep(out_dir, values, knob: str) -> None:
     fig.tight_layout()
     fig.savefig(out_dir / "sweep.png", dpi=150, facecolor=SURFACE)
     plt.close(fig)
+
+
+def plot_pitch_checkpoint(summary, models, modules, path) -> None:
+    """Per region: hidden absolute pitch before training (grey) and after, for each model type."""
+    fig, ax = plt.subplots(figsize=(max(7, 2.0 * len(modules)), 4.0), facecolor=SURFACE)
+    _style(ax)
+    cats = ["#2a78d6", "#eb6834", "#1baf7a", "#6250d6"]
+    groups = ["before training"] + models
+    w = 0.8 / len(groups)
+    for gi, g in enumerate(groups):
+        xs, ys, lo, hi = [], [], [], []
+        for mi, m in enumerate(modules):
+            if g == "before training":
+                es = [e for e in summary if e.get("module") == m and "untrained" in e]
+                y = float(np.mean([e["untrained"] for e in es])) if es else np.nan
+                l = h = 0.0
+            else:
+                e = next((e for e in summary if e.get("model") == g and e.get("module") == m and "trained" in e), None)
+                if e is None:
+                    continue
+                y, l, h = e["trained"], e["trained"] - e["trained_lo"], e["trained_hi"] - e["trained"]
+            xs.append(mi - 0.4 + w * (gi + 0.5))
+            ys.append(y)
+            lo.append(l if np.isfinite(l) else 0)
+            hi.append(h if np.isfinite(h) else 0)
+        color = "#c3c2b7" if gi == 0 else cats[(gi - 1) % len(cats)]
+        ax.bar(xs, ys, w * 0.92, color=color, label=g, edgecolor=SURFACE, linewidth=1)
+        if gi:
+            ax.errorbar(xs, ys, yerr=[lo, hi], fmt="none", ecolor=INK_2, elinewidth=0.8)
+    ax.axhline(1 / 12, color=INK, ls="--", lw=1)
+    ax.text(len(modules) - 0.45, 1 / 12 + 0.015, "chance", fontsize=7.5, color=INK_2, ha="right")
+    ax.set_xticks(range(len(modules)))
+    ax.set_xticklabels(modules)
+    ax.set_ylim(0, 1)
+    ax.set_ylabel("note named correctly\n(100–300 ms after the tone)")
+    ax.yaxis.grid(True, color=GRID, lw=0.6)
+    ax.set_axisbelow(True)
+    ax.legend(frameon=False, fontsize=8)
+    ax.set_title("Hidden absolute pitch before and after training (grey = same networks before training, mean of all)",
+                 fontsize=9, color=INK, loc="left")
+    fig.tight_layout()
+    fig.savefig(path, dpi=150, facecolor=SURFACE)
+    plt.close(fig)
