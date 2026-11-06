@@ -1,19 +1,23 @@
 """Scoring network outputs.
 
-A trial counts as correct only if BOTH hold:
+Every trial gets exactly one of four outcomes:
 
-1. **Fixation held**: the fixation output stayed above 0.5 for the whole
-   pre-response period (ignoring the first 100 ms, while the network settles
-   from its zero initial state).
-2. **Correct response** at the last time step:
-   * if the task asks for a direction: fixation output < 0.5 and the decoded
-     direction is within 0.2*pi (36 degrees) of the target;
-   * if the task asks to keep fixating: fixation output still > 0.5.
+* ``correct``
+* ``broke_fixation`` -- answered too early: the fixation output dropped below
+  0.5 before the go cue (ignoring the first 100 ms, while the network settles
+  from its zero initial state). An "impulsive" error.
+* ``no_response``    -- should have answered but kept fixating to the end.
+* ``wrong``          -- answered, but with the wrong answer (direction more
+  than 0.2*pi = 36 degrees off, or the wrong choice), or answered on a trial
+  where the right thing was to keep fixating.
 
-Difference from Yang et al. 2019: their score only checks the last time step,
-so a network that responds too early still counts as correct. We also require
-fixation to be held, because "responds impulsively" is exactly the kind of
-failure a lesion might cause and we don't want to hide it.
+A trial is correct when fixation was held until the go cue AND the final time
+step shows the right behaviour. Difference from Yang et al. 2019: their score
+only checks the last time step, so a network that responds too early still
+counts as correct. We count early responses as errors, and report them
+separately, because "responds impulsively" is exactly the kind of failure a
+lesion might cause and we don't want to hide it -- or let it masquerade as a
+more specific deficit.
 """
 
 from __future__ import annotations
@@ -24,26 +28,46 @@ from .tasks.common import Layout, TrialBatch, circular_distance
 
 ANGLE_TOLERANCE = 0.2 * np.pi
 SETTLE_MS = 100.0
+OUTCOMES = ("correct", "broke_fixation", "no_response", "wrong")
+
+
+def trial_outcomes(out: np.ndarray, batch: TrialBatch, layout: Layout, dt_ms: float) -> np.ndarray:
+    """Array (B,) of outcome strings (see OUTCOMES)."""
+    fix = out[:, :, layout.out_slices["fixation"]][..., 0]  # (T, B)
+    r0 = batch.response_start
+    settle = int(round(SETTLE_MS / dt_ms))
+    B = fix.shape[1]
+
+    held = (fix[settle:r0] > 0.5).all(axis=0)
+    answered = fix[-1] < 0.5
+    respond = batch.should_respond
+
+    right_answer = np.zeros(B, dtype=bool)
+    has_dir = ~np.isnan(batch.target_dir)
+    if has_dir.any():
+        decoded = layout.decode_ring(out[-1, :, layout.out_slices["ring"]])
+        err = circular_distance(decoded, np.nan_to_num(batch.target_dir))
+        right_answer |= has_dir & (err < ANGLE_TOLERANCE)
+    if batch.target_choice is not None:
+        chosen = out[-1, :, layout.out_slices["choice"]].argmax(-1)
+        right_answer |= (batch.target_choice >= 0) & (chosen == batch.target_choice)
+
+    outcome = np.full(B, "wrong", dtype=object)
+    ok = np.where(respond, answered & right_answer, ~answered)
+    outcome[ok] = "correct"
+    outcome[respond & ~answered] = "no_response"
+    outcome[~held] = "broke_fixation"  # takes precedence: it happened first
+    return outcome
 
 
 def trial_correct(out: np.ndarray, batch: TrialBatch, layout: Layout, dt_ms: float) -> np.ndarray:
     """Boolean (B,) array: was each trial performed correctly?"""
-    fix = out[:, :, layout.out_slices["fixation"]][..., 0]  # (T, B)
-    ring = out[:, :, layout.out_slices["ring"]]  # (T, B, n_ring)
-    r0 = batch.response_start
-    settle = int(round(SETTLE_MS / dt_ms))
-
-    held = (fix[settle:r0] > 0.5).all(axis=0)
-
-    should_respond = ~np.isnan(batch.target_dir)
-    final_fix = fix[-1]
-    decoded = layout.decode_ring(ring[-1])
-    err = circular_distance(decoded, np.nan_to_num(batch.target_dir))
-    responded_correctly = (final_fix < 0.5) & (err < ANGLE_TOLERANCE)
-    kept_fixating = final_fix > 0.5
-
-    return held & np.where(should_respond, responded_correctly, kept_fixating)
+    return trial_outcomes(out, batch, layout, dt_ms) == "correct"
 
 
 def accuracy(out: np.ndarray, batch: TrialBatch, layout: Layout, dt_ms: float) -> float:
     return float(trial_correct(out, batch, layout, dt_ms).mean())
+
+
+def outcome_rates(outcomes: np.ndarray) -> dict[str, float]:
+    return {k: float(np.mean(outcomes == k)) for k in OUTCOMES}

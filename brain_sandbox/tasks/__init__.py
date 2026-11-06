@@ -6,11 +6,33 @@ import numpy as np
 
 from ..config import TaskConfig
 from .common import Layout, TrialBatch, circular_distance
-from . import yang
+from . import pitch, yang
 
 TASKS = {
     "go": yang.go,
+    "anti": yang.anti,
     "delaygo": yang.delaygo,
+    "dm1": yang.dm1,
+    "dm2": yang.dm2,
+    "ctxdm1": yang.ctxdm1,
+    "ctxdm2": yang.ctxdm2,
+    "dms": yang.dms,
+    "dnms": yang.dnms,
+    "relpitch": pitch.relpitch,
+}
+
+# Plain-language names, used in plots, the report and the dashboard.
+TASK_LABELS = {
+    "go": "Look at the light",
+    "anti": "Look away from the light",
+    "delaygo": "Remember where the light was",
+    "dm1": "Pick the brighter light (channel 1)",
+    "dm2": "Pick the brighter light (channel 2)",
+    "ctxdm1": "Pick the brighter light, ignoring channel 2",
+    "ctxdm2": "Pick the brighter light, ignoring channel 1",
+    "dms": "Same place twice? Then look",
+    "dnms": "Different place? Then look",
+    "relpitch": "Same tune in a new key?",
 }
 
 
@@ -35,4 +57,4 @@ class TaskSet:
         return str(rng.choice(self.names, p=self.probs))
 
 
-__all__ = ["TASKS", "TaskSet", "Layout", "TrialBatch", "circular_distance"]
+__all__ = ["TASKS", "TASK_LABELS", "TaskSet", "Layout", "TrialBatch", "circular_distance"]

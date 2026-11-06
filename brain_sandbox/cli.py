@@ -43,7 +43,7 @@ def cmd_train(args):
     if args.seeds is not None:
         cfg.seeds = args.seeds
     cfg = apply_overrides(cfg, args.set or [])
-    run_dir = train_experiment(cfg, args.runs_root)
+    run_dir = train_experiment(cfg, args.runs_root, parallel=args.parallel)
 
     histories = {}
     for s in cfg.seeds:
@@ -93,6 +93,7 @@ def main(argv=None):
     t.add_argument("--seeds", type=int, nargs="+")
     t.add_argument("--set", nargs="*", help="override config values, e.g. train.n_iters=500")
     t.add_argument("--runs-root", default="runs")
+    t.add_argument("--parallel", type=int, default=1, help="train this many seeds at once (1 CPU core each)")
     t.set_defaults(func=cmd_train)
 
     e = sub.add_parser("evaluate", help="evaluate a trained run on fresh trials")

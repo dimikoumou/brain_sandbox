@@ -96,7 +96,12 @@ class TaskConfig:
     names: list[str] = field(default_factory=lambda: ["go", "delaygo"])
     n_ring: int = 16  # units per direction-tuned ("ring") input modality
     n_tono: int = 0  # tonotopic input units (pitch tasks; phase 2)
-    n_choice: int = 0  # extra binary-choice output units (phase 2)
+    n_choice: int = 0  # extra binary-choice output units (pitch "same/different")
+    # Pitch: notes are integers 0..n_semitones above f_low_hz (default C4 =
+    # 261.63 Hz, so 24 semitones = two octaves, C4..C6).
+    n_semitones: int = 24
+    f_low_hz: float = 261.63
+    tono_width: float = 0.75  # width of a tone's bump on the tonotopic map, in semitones
     tuning_width: float | None = None  # radians; default 2*pi/n_ring
     # Per-task overrides of the timing/stimulus parameters defined at the top
     # of each task file, e.g. {"delaygo": {"delay_ms": [400, 1600]}}.
@@ -119,7 +124,10 @@ class TrainConfig:
     l2_weight: float = 1e-5
     eval_every: int = 100
     eval_batch: int = 256  # trials per task per evaluation
-    stop_at_accuracy: float | None = 0.95  # stop when every task reaches this
+    stop_at_accuracy: float | None = 0.95  # criterion: every task at or above this...
+    # ...then keep practising this many extra iterations, so the network is not
+    # left only *just* passing (phase 1 showed a thin fixation margin).
+    practice_after_criterion: int = 0
     num_threads: int = 4
 
 

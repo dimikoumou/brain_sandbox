@@ -16,6 +16,7 @@ question of whether absolute pitch gets discarded (phase 2).
 from __future__ import annotations
 
 import csv
+import json
 import time
 from pathlib import Path
 
@@ -85,6 +86,7 @@ def train_one(cfg: ExperimentConfig, seed: int, out_dir: Path | None = None, ver
     t0 = time.time()
     running_loss = []
     hits = 0
+    criterion_iter = None  # iteration at which the criterion was first met
     for it in range(1, tc.n_iters + 1):
         task = tasks.sample_task(rng)
         batch = tasks.generate(task, tc.batch_size, rng)
@@ -112,18 +114,28 @@ def train_one(cfg: ExperimentConfig, seed: int, out_dir: Path | None = None, ver
                 print(f"[seed {seed}] iter {it:5d}  loss {row['loss']:.4f}  {accs}  ({row['time_s']} s)", flush=True)
             # Stop once every task is above criterion at two evaluations in a row
             # (one lucky evaluation is not enough).
-            if tc.stop_at_accuracy is not None and min(acc.values()) >= tc.stop_at_accuracy:
-                hits += 1
-                if hits >= 2:
-                    if verbose:
-                        print(f"[seed {seed}] reached criterion {tc.stop_at_accuracy} on all tasks; stopping.")
-                    break
-            else:
-                hits = 0
+            if criterion_iter is None and tc.stop_at_accuracy is not None:
+                if min(acc.values()) >= tc.stop_at_accuracy:
+                    hits += 1
+                    if hits >= 2:
+                        criterion_iter = it
+                        if verbose:
+                            print(f"[seed {seed}] reached criterion {tc.stop_at_accuracy} on all tasks at iter {it}; "
+                                  f"practising {tc.practice_after_criterion} more.", flush=True)
+                else:
+                    hits = 0
+            # Checked only right after an evaluation, so the last row of the
+            # history always describes the final network.
+            if criterion_iter is not None and it >= criterion_iter + tc.practice_after_criterion:
+                break
 
+    if verbose and criterion_iter is None:
+        print(f"[seed {seed}] did NOT reach criterion within {tc.n_iters} iterations.", flush=True)
     if out_dir is not None:
         save_seed_results(out_dir, model, history)
-    return {"model": model, "tasks": tasks, "history": history}
+        (out_dir / "training_summary.json").write_text(json.dumps(
+            {"criterion_iter": criterion_iter, "final_iter": it, "final_accuracy": history[-1]}, indent=2))
+    return {"model": model, "tasks": tasks, "history": history, "criterion_iter": criterion_iter}
 
 
 def save_seed_results(out_dir: Path, model: ModularRNN, history: list[dict]) -> None:
@@ -137,11 +149,34 @@ def save_seed_results(out_dir: Path, model: ModularRNN, history: list[dict]) -> 
     plot_learning_curve(history, out_dir / "learning_curve.png")
 
 
-def train_experiment(cfg: ExperimentConfig, runs_root: str | Path = "runs") -> Path:
+def _train_seed_job(args):
+    cfg, seed, out_dir = args
+    cfg.train.num_threads = 1  # each process gets one CPU core
+    train_one(cfg, seed, out_dir)
+    return seed
+
+
+def train_experiment(cfg: ExperimentConfig, runs_root: str | Path = "runs", parallel: int = 1) -> Path:
+    """Train one network per seed. `parallel` > 1 trains seeds in separate processes.
+
+    On a laptop CPU, several single-threaded processes get more done than one
+    multi-threaded process, because these small networks spend most of their
+    time in Python overhead, not in big matrix maths. Note that results are
+    bit-for-bit reproducible only with the same thread count per network.
+    """
     run_dir = make_run_dir(cfg, runs_root)
-    print(f"Run folder: {run_dir}")
-    for seed in cfg.seeds:
-        train_one(cfg, seed, seed_dir(run_dir, seed))
+    print(f"Run folder: {run_dir}", flush=True)
+    jobs = [(cfg, seed, seed_dir(run_dir, seed)) for seed in cfg.seeds]
+    if parallel <= 1:
+        for cfg_, seed, d in jobs:
+            train_one(cfg_, seed, d)
+    else:
+        import multiprocessing as mp
+        from concurrent.futures import ProcessPoolExecutor
+
+        with ProcessPoolExecutor(max_workers=parallel, mp_context=mp.get_context("spawn")) as pool:
+            for seed in pool.map(_train_seed_job, jobs):
+                print(f"[seed {seed}] finished", flush=True)
     return run_dir
 
 
