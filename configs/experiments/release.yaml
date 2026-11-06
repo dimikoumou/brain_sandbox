@@ -1,0 +1,36 @@
+# Experiment 2 (the "release" experiment): weaken the top-down conceptual region
+# and ask whether more absolute-pitch information becomes readable, and at what cost.
+# Run:  python -m brain_sandbox perturb --experiment configs/experiments/release.yaml
+name: release
+run: runs/20261106-192048_main_modular
+n_trials: 512
+pitch: true
+pitch_reps: 24
+preregistration: |
+  Written by Claude on the user's behalf on 2026-11-06, BEFORE any of these
+  networks had finished training and before running this experiment.
+  Hypothesis (a model version of Snyder's "release" idea): the conceptual
+  region, through its feedback to sensory, suppresses detail that the trained
+  pitch game does not need -- including which exact note was played. Weakening
+  conceptual or cutting its feedback should then make the exact note MORE
+  decodable from sensory after the tone, while the pitch game gets worse.
+  My honest expectation: probably NOT. The feedback pathway is excitatory-only
+  (inhibition is local in this model), so removing it is more likely to reduce
+  sensory activity, and with it the leftover note information. I predict
+  "increase" anyway, because that is the hypothesis under test; the outcome
+  table will say whether it held.
+predictions:
+  - {condition: "Cut conceptual -> sensory (feedback)", pitch_module: sensory, direction: increase}
+  - {condition: "Switch off conceptual", pitch_module: sensory, direction: increase}
+  - {condition: "Switch off half of conceptual", pitch_module: sensory, direction: increase}
+  - {condition: "Conceptual less excitable (gain x0.5)", pitch_module: sensory, direction: increase}
+  - {condition: "Switch off conceptual", task: pitchdir, direction: decrease}
+  - {condition: "Cut conceptual -> sensory (feedback)", task: pitchdir, direction: decrease}
+conditions:
+  - {label: "Cut conceptual -> sensory (feedback)", stack: [{type: cut_pathway, src: conceptual, dst: sensory}]}
+  - {label: "Switch off a quarter of conceptual",   stack: [{type: lesion_module, module: conceptual, fraction: 0.25}]}
+  - {label: "Switch off half of conceptual",        stack: [{type: lesion_module, module: conceptual, fraction: 0.5}]}
+  - {label: "Switch off conceptual",                stack: [{type: lesion_module, module: conceptual}]}
+  - {label: "Conceptual less excitable (gain x0.5)", stack: [{type: gain, factor: 0.5, module: conceptual}]}
+  # A control: does damaging a DIFFERENT region of the same size do the same thing?
+  - {label: "Control: switch off memory",            stack: [{type: lesion_module, module: memory}]}

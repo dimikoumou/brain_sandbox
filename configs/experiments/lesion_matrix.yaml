@@ -1,0 +1,46 @@
+# Experiment 1: break each part of the main model in turn, test every game.
+# Run:  python -m brain_sandbox perturb --experiment configs/experiments/lesion_matrix.yaml
+name: lesion_matrix
+run: runs/20261106-192048_main_modular
+n_trials: 512
+preregistration: |
+  Written by Claude on the user's behalf on 2026-11-06, BEFORE any of these
+  networks had finished training and before running this experiment.
+  1. Switching off sensory will break every game (all stimuli enter there).
+  2. Switching off executive will break every game (the answer comes from there).
+  3. Switching off memory will hurt the games with a wait ("Remember where the
+     light was", the two match games) more than "Look at the light". I am NOT
+     confident: memory is not the only route, and phase 1 showed delay activity
+     in other regions too.
+  4. Weakening inhibition will mostly cause impulsive errors (answering early).
+  5. Cutting the conceptual->sensory feedback will have little effect on the
+     light games.
+  6. With strict criteria, I expect at most a handful of double dissociations.
+predictions:
+  - {condition: "Switch off sensory", task: go, direction: decrease}
+  - {condition: "Switch off executive", task: go, direction: decrease}
+  - {condition: "Switch off memory", task: delaygo, direction: decrease}
+  - {condition: "Switch off memory", task: go, direction: no change}
+  - {condition: "Cut conceptual -> sensory (feedback)", task: go, direction: no change}
+  - {condition: "Weaker inhibition (x0.5)", task: delaygo, direction: decrease}
+cluster_lesions: true
+conditions:
+  - {label: "Switch off sensory",    stack: [{type: lesion_module, module: sensory}]}
+  - {label: "Switch off memory",     stack: [{type: lesion_module, module: memory}]}
+  - {label: "Switch off conceptual", stack: [{type: lesion_module, module: conceptual}]}
+  - {label: "Switch off executive",  stack: [{type: lesion_module, module: executive}]}
+  - {label: "Switch off half of memory",     stack: [{type: lesion_module, module: memory, fraction: 0.5}]}
+  - {label: "Switch off half of conceptual", stack: [{type: lesion_module, module: conceptual, fraction: 0.5}]}
+  - {label: "Cut sensory -> memory",       stack: [{type: cut_pathway, src: sensory, dst: memory}]}
+  - {label: "Cut sensory -> conceptual",   stack: [{type: cut_pathway, src: sensory, dst: conceptual}]}
+  - {label: "Cut conceptual -> sensory (feedback)", stack: [{type: cut_pathway, src: conceptual, dst: sensory}]}
+  - {label: "Cut memory -> executive",     stack: [{type: cut_pathway, src: memory, dst: executive}]}
+  - {label: "Cut conceptual -> executive", stack: [{type: cut_pathway, src: conceptual, dst: executive}]}
+  - {label: "Noise x3 everywhere",         stack: [{type: noise, factor: 3.0}]}
+  - {label: "Noise x5 in memory",          stack: [{type: noise, factor: 5.0, module: memory}]}
+  - {label: "Less excitable (gain x0.5)",  stack: [{type: gain, factor: 0.5}]}
+  - {label: "More excitable (gain x1.5)",  stack: [{type: gain, factor: 1.5}]}
+  - {label: "Weaker inhibition (x0.5)",    stack: [{type: inhibition, factor: 0.5}]}
+  - {label: "Stronger inhibition (x1.5)",  stack: [{type: inhibition, factor: 1.5}]}
+  - {label: "Slower units (time constant x2)", stack: [{type: time_constant, factor: 2.0}]}
+  - {label: "Delete weakest 30% of connections", stack: [{type: prune, fraction: 0.3}]}
