@@ -1,0 +1,30 @@
+# Comparison model: ONE unstructured block of 256 units (the same total size),
+# trained on the same 10 tasks, as in Yang et al. 2019. Any structure in it
+# has to emerge by itself.
+# Anything not listed takes its default from brain_sandbox/config.py; the run
+# folder's config.yaml records every resolved value.
+name: flat
+seeds: [0, 1, 2]
+model:
+  dale: true
+  dt_ms: 20.0
+  modules:
+    - {name: flat, size: 256, tau_ms: 100, noise: 0.05}
+  pathways: []
+  input_routes: {fixation: [flat], mod1: [flat], mod2: [flat], tono: [flat], rule: [flat]}
+  output_module: flat
+tasks:
+  names: [go, anti, delaygo, dm1, dm2, ctxdm1, ctxdm2, dms, dnms, relpitch]
+  n_ring: 16
+  n_tono: 36          # tonotopic units covering two octaves (C4..C6)
+  n_choice: 2         # "same tune" / "different tune"
+train:
+  n_iters: 40000      # upper limit; training normally stops earlier
+  batch_size: 64
+  lr: 0.003
+  l2_rate: 0.0001     # pressure knob: cost of high activity
+  l2_weight: 0.00001  # pressure knob: cost of large weights
+  eval_every: 200
+  eval_batch: 128
+  stop_at_accuracy: 0.9        # every task at >= 90%, twice in a row...
+  practice_after_criterion: 2000  # ...then 2000 more iterations of practice

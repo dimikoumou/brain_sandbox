@@ -115,7 +115,10 @@ def train_one(cfg: ExperimentConfig, seed: int, out_dir: Path | None = None, ver
             # Stop once every task is above criterion at two evaluations in a row
             # (one lucky evaluation is not enough).
             if criterion_iter is None and tc.stop_at_accuracy is not None:
-                if min(acc.values()) >= tc.stop_at_accuracy:
+                # Tasks with training weight 0 are never practised, so they
+                # don't count toward the criterion (they are still evaluated).
+                trained_acc = [a for k, a in acc.items() if cfg.tasks.weights.get(k, 1.0) > 0]
+                if min(trained_acc) >= tc.stop_at_accuracy:
                     hits += 1
                     if hits >= 2:
                         criterion_iter = it
