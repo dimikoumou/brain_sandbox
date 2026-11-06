@@ -19,6 +19,7 @@ TASKS = {
     "dms": yang.dms,
     "dnms": yang.dnms,
     "relpitch": pitch.relpitch,
+    "pitchdir": pitch.pitchdir,
 }
 
 # Plain-language names, used in plots, the report and the dashboard.
@@ -33,6 +34,7 @@ TASK_LABELS = {
     "dms": "Same place twice? Then look",
     "dnms": "Different place? Then look",
     "relpitch": "Same tune in a new key?",
+    "pitchdir": "Did the tune go up or down?",
 }
 
 

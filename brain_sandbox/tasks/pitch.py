@@ -130,3 +130,44 @@ def probe_batch(layout: Layout, notes: np.ndarray, dt_ms: float, rule_task: str 
     tb.x[:, :, layout.in_slices["fixation"]] = 1.0  # keep fixating throughout
     tb.tone_input(np.asarray(notes), tb.ep("tone"))
     return tb.build(None, {"note": np.asarray(notes), "pitch_class": layout.pitch_class(notes)})
+
+
+# --------------------------------------------------------------------------
+# pitchdir: the simplest relative-pitch judgement. Two tones; did the pitch go
+# UP (choice 0) or DOWN (choice 1)? The starting note is random, so absolute
+# pitch is useless; only the direction of the interval matters.
+# --------------------------------------------------------------------------
+PITCHDIR_DEFAULTS = {
+    "fix_ms": [200, 400],
+    "tone_ms": 200,
+    "gap_ms": 100,
+    "delay_ms": [100, 300],  # silence after the second tone, before the go cue
+    "response_ms": 400,
+    "intervals": [1, 2, 3, 4, 5],  # semitones (sign random)
+}
+
+
+def pitchdir(layout: Layout, B: int, rng: np.random.Generator, dt_ms: float, params: dict) -> TrialBatch:
+    p = {**PITCHDIR_DEFAULTS, **params}
+    note_ms = p["tone_ms"] + p["gap_ms"]
+    epochs = {
+        "fixation": sample_ms(rng, p["fix_ms"]),
+        "tones": 2 * note_ms,
+        "delay": sample_ms(rng, p["delay_ms"]),
+        "response": sample_ms(rng, p["response_ms"]),
+    }
+    tb = TrialBuilder(layout, "pitchdir", B, epochs, dt_ms)
+    step = rng.choice(p["intervals"], size=B) * rng.choice([-1, 1], size=B)
+    lo = np.maximum(0, -step)
+    hi = np.minimum(layout.n_semitones, layout.n_semitones - step)
+    first = rng.integers(lo, hi + 1)
+    second = first + step
+    tone_steps = int(round(p["tone_ms"] / dt_ms))
+    note_steps = int(round(note_ms / dt_ms))
+    t0 = tb.epochs["tones"][0]
+    tb.tone_input(first, slice(t0, t0 + tone_steps))
+    tb.tone_input(second, slice(t0 + note_steps, t0 + note_steps + tone_steps))
+    tb.fixation_input(until="response")
+    choice = np.where(step > 0, 0, 1)
+    tb.standard_targets(target_choice=choice)
+    return tb.build(None, {"first": first, "second": second, "step": step}, target_choice=choice)
