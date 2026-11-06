@@ -128,8 +128,10 @@ DM_DEFAULTS = {
     "response_ms": 400,  # stimuli stay on during the response
     "mean_strength": [0.8, 1.2],
     # Coherence magnitudes used in training; the sign (which stimulus is
-    # stronger) is random. Small values make the task hard on purpose.
-    "coherences": [0.02, 0.04, 0.08, 0.16],
+    # stronger) is random. Harder values (0.02, 0.0) are used only when
+    # measuring psychometric curves: with them in training, the tasks could
+    # not reach the training criterion (README, "Phase 2 notes").
+    "coherences": [0.04, 0.08, 0.16, 0.32],
 }
 
 

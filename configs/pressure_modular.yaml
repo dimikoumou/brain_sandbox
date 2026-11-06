@@ -1,7 +1,7 @@
 # 'Pressure' variant: same as main_modular, but it is costlier to keep
 # information around: twice the noise in every region, and 10x stronger
 # penalties on activity and weights. Question: does pressure make the network
-# discard absolute pitch (which the relative-pitch task does not need)?
+# discard absolute pitch (which the pitch-direction task does not need)?
 # Anything not listed takes its default from brain_sandbox/config.py; the run
 # folder's config.yaml records every resolved value.
 name: pressure_modular
@@ -15,17 +15,17 @@ model:
     - {name: conceptual, size: 64, tau_ms: 100, noise: 0.10}
     - {name: executive,  size: 64, tau_ms: 100, noise: 0.10}
 tasks:
-  names: [go, anti, delaygo, dm1, dm2, ctxdm1, ctxdm2, dms, dnms, relpitch]
+  names: [go, anti, delaygo, dm1, dm2, ctxdm1, ctxdm2, dms, dnms, pitchdir]
   n_ring: 16
   n_tono: 36          # tonotopic units covering two octaves (C4..C6)
-  n_choice: 2         # "same tune" / "different tune"
+  n_choice: 2         # the two answer buttons of the pitch task ("up" / "down")
 train:
-  n_iters: 40000      # upper limit; training normally stops earlier
+  n_iters: 25000      # upper limit; training normally stops earlier
   batch_size: 64
   lr: 0.003
   l2_rate: 0.001      # pressure knob: cost of high activity
   l2_weight: 0.0001   # pressure knob: cost of large weights
-  eval_every: 200
-  eval_batch: 128
-  stop_at_accuracy: 0.9        # every task at >= 90%, twice in a row...
+  eval_every: 250
+  eval_batch: 96
+  stop_at_accuracy: 0.85       # every task at >= 85%, twice in a row...
   practice_after_criterion: 2000  # ...then 2000 more iterations of practice

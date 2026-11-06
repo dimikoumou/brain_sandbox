@@ -3,7 +3,7 @@
 Procedure (the network is frozen; nothing here trains it):
 
 1. Play single tones -- every note of the two-octave range, many times each --
-   with the network "in pitch mode" (the relative-pitch rule input on).
+   with the network "in pitch mode" (the rule input of its pitch task on).
    The network's own noise makes every repetition a little different.
 2. Record each region's activity in a window AFTER the tone has ended
    (default 100-300 ms after offset). The input is silent then, so whatever
@@ -57,7 +57,10 @@ def probe_features(model, layout, dt_ms: float, n_reps: int = 24, window_ms=(100
       input_post, input_during  (n_trials, n_tono) raw tonotopic input (+ input noise)
     """
     notes = np.tile(np.arange(layout.n_semitones + 1), n_reps)
-    batch = probe_batch(layout, notes, dt_ms)
+    # Put the network "in pitch mode": use the rule of the pitch task it was
+    # trained on (pitch direction, if present; otherwise the melody task).
+    rule = "pitchdir" if "pitchdir" in layout.task_names else "relpitch"
+    batch = probe_batch(layout, notes, dt_ms, rule_task=rule)
     with torch.random.fork_rng():
         torch.manual_seed(seed)
         _, rates = model(to_torch(batch.x))

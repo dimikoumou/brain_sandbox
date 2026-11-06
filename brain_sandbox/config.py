@@ -69,7 +69,12 @@ class ModelConfig:
     # mod2, tono, rule (see tasks/layout.py).
     input_routes: dict[str, list[str]] = field(
         default_factory=lambda: {
-            "fixation": ["sensory"],
+            # The fixation / go cue also goes straight to executive (like the
+            # rule input). Phase 2 showed that routing it only through sensory
+            # made "wait for the go signal" the main thing slowing training,
+            # which is a nuisance unrelated to our questions. Lights and tones
+            # still enter through sensory only.
+            "fixation": ["sensory", "executive"],
             "mod1": ["sensory"],
             "mod2": ["sensory"],
             "tono": ["sensory"],

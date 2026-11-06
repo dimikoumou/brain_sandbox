@@ -133,3 +133,17 @@ def test_outcome_types(ts):
     early = b.y.copy()
     early[b.response_start - 5 :, :, 0] = 0.0
     assert np.all(trial_outcomes(early, b, L, DT) == "broke_fixation")
+
+
+def test_pitchdir_ground_truth(ts):
+    b = ts.generate("pitchdir", 512, np.random.default_rng(9))
+    step = b.meta["second"] - b.meta["first"]
+    assert np.all(step != 0)
+    assert np.all(b.target_choice == np.where(step > 0, 0, 1))
+    n = ts.layout.n_semitones
+    assert b.meta["first"].min() >= 0 and b.meta["second"].max() <= n
+    assert 0.4 < (step > 0).mean() < 0.6
+    # The first note varies widely, so absolute pitch can't predict the answer.
+    assert len(np.unique(b.meta["first"])) > 15
+    for c in (0, 1):
+        assert abs(np.corrcoef(b.meta["first"], b.target_choice)[0, 1]) < 0.35
